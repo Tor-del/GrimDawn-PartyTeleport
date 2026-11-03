@@ -1,0 +1,16 @@
+/build/
+/installer/dist/
+/Uninstall/
+/research/
+/PartyTeleport.exe
+/PartyTeleport.dll
+/PartyTeleport.ico
+/PartyTeleport.ini
+/README*.txt
+/MinHook-LICENSE.txt
+*.log
+*.obj
+*.pdb
+*.ilk
+*.exp
+*.lib

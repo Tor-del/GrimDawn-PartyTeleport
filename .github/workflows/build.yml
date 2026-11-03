@@ -1,0 +1,101 @@
+name: Windows build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Install verified Inno Setup 6.7.3
+        run: |
+          $installer = Join-Path $env:RUNNER_TEMP 'innosetup-6.7.3.exe'
+          Invoke-WebRequest 'https://github.com/jrsoftware/issrc/releases/download/is-6_7_3/innosetup-6.7.3.exe' -OutFile $installer
+          $expected = '9c73c3bae7ed48d44112a0f48e66742c00090bdb5bef71d9d3c056c66e97b732'
+          if ((Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) {
+            throw 'Inno Setup checksum mismatch.'
+          }
+          $folder = Join-Path $env:RUNNER_TEMP 'InnoSetup'
+          $proc = Start-Process -FilePath $installer -ArgumentList ('/CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR="'+$folder+'"') -WindowStyle Hidden -PassThru -Wait
+          if ($proc.ExitCode -ne 0) { throw "Inno Setup installation failed: $($proc.ExitCode)" }
+          "INNO_COMPILER=$folder\ISCC.exe" >> $env:GITHUB_ENV
+      - name: Compile and run bridge and language tests
+        run: ./Build.ps1 -StageOnly
+      - name: Build bilingual installer
+        run: ./Build-Installer.ps1 -SkipBuild -CompilerPath $env:INNO_COMPILER
+      - name: Check installer defaults and rejected targets
+        run: ./Test-Installer.ps1
+      - name: Render UI smoke test
+        run: |
+          $output = Join-Path $PWD 'build\preview.bmp'
+          $proc = Start-Process -FilePath (Join-Path $PWD 'build\PartyTeleport.exe') -ArgumentList @('--render-preview', ('"'+$output+'"')) -WindowStyle Hidden -PassThru
+          if (-not $proc.WaitForExit(15000)) { $proc.Kill($true); throw 'Preview timed out.' }
+          if ($proc.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $output)) { throw 'Preview failed.' }
+      - name: Package portable ZIP and checksums
+        run: ./Package.ps1 -SkipBuild
+      - name: Upload packages
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: Party-Teleport-Windows-x64
+          path: |
+            installer/dist/GrimDawn-PartyTeleport-*-Setup-x64.exe
+            installer/dist/GrimDawn-PartyTeleport-*-x64.zip
+            installer/dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload test logs on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: Party-Teleport-test-logs
+          path: build/installer-checks-*/**/*.log
+          if-no-files-found: ignore
+
+  publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: Party-Teleport-Windows-x64
+          path: dist
+      - name: Publish a new experimental version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(tr -d '\r\n\357\273\277' < VERSION)"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Invalid VERSION'; exit 1; }
+          tag="v$version"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists; preserving its assets."
+            exit 0
+          fi
+          gh release create "$tag" dist/* --target "$GITHUB_SHA" --prerelease \
+            --title "Grim Dawn — Party Teleport $version" --notes-file docs/release-notes.md

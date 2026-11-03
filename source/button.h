@@ -1,6 +1,7 @@
 #pragma once
 #include "i18n.h"
 #include "protocol.h"
+#include "settings.h"
 #include <algorithm>
 #include <cstdio>
 namespace ui {
@@ -37,7 +38,7 @@ inline void paintButton(HDC dc,RECT r,const pt::Row& row,bool edit,bool enabled,
     (void)w;
 }
 inline bool renderPreview(const wchar_t* file) {
-    constexpr int w=560,h=270;
+    constexpr int w=640,h=360;
     auto dc=CreateCompatibleDC(nullptr);BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);
     info.bmiHeader.biWidth=w;info.bmiHeader.biHeight=h;info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;
     void* pixels=nullptr;auto bitmap=CreateDIBSection(dc,&info,DIB_RGB_COLORS,&pixels,nullptr,0);
@@ -45,14 +46,14 @@ inline bool renderPreview(const wchar_t* file) {
     auto old=SelectObject(dc,bitmap);RECT all{0,0,w,h};auto bg=CreateSolidBrush(RGB(15,16,14));FillRect(dc,&all,bg);DeleteObject(bg);
     auto heading=CreateFontW(-21,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Georgia");
     auto oldFont=SelectObject(dc,heading);SetTextColor(dc,RGB(218,189,134));SetBkMode(dc,TRANSPARENT);
-    RECT titleRect{24,16,536,52};DrawTextW(dc,title,-1,&titleRect,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+    RECT titleRect{24,16,616,52};DrawTextW(dc,title,-1,&titleRect,DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     SelectObject(dc,oldFont);DeleteObject(heading);
     pt::Row row{};wcscpy_s(row.name,L"Aetherwalker");row.distance=134;
     RECT a{24,72,274,108};paintButton(dc,a,row,false,true,false);
     row.distance=18;wcscpy_s(row.name,L"Riftkeeper");RECT b{24,120,274,156};paintButton(dc,b,row,false,true,true);
     row.distance=-1;wcscpy_s(row.name,L"Nightblade");RECT c{24,168,274,204};paintButton(dc,c,row,false,false,false);
-    RECT d{292,72,542,108};paintButton(dc,d,row,true,false,false);
-    SetTextColor(dc,RGB(155,150,134));RECT note{24,226,536,254};DrawTextW(dc,tr(L"UI preview · F12 switches English / Russian",L"Пример интерфейса · F12: English / Русский"),-1,&note,DT_SINGLELINE|DT_VCENTER);
+    int state=SaveDC(dc);SetViewportOrgEx(dc,298,68,nullptr);paintSettings(dc,72);RestoreDC(dc,state);
+    SetTextColor(dc,RGB(155,150,134));RECT note{24,316,616,344};DrawTextW(dc,tr(L"UI preview · F8 opens / closes settings",L"Пример интерфейса · F8 открывает / закрывает настройку"),-1,&note,DT_SINGLELINE|DT_VCENTER);
     GdiFlush();
     BITMAPFILEHEADER header{};header.bfType=0x4D42;header.bfOffBits=sizeof(header)+sizeof(BITMAPINFOHEADER);header.bfSize=header.bfOffBits+w*h*4;
     FILE* output=nullptr;_wfopen_s(&output,file,L"wb");bool ok=false;

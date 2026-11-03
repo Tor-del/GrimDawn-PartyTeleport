@@ -25,6 +25,10 @@ cl /nologo /std:c++17 /utf-8 /O2 /MT /EHsc /W4 "$modFolder\source\tests.cpp" buf
 if errorlevel 1 exit /b 1
 "$buildFolder\tests.exe"
 if errorlevel 1 exit /b 1
+cl /nologo /std:c++17 /utf-8 /O2 /MT /EHsc /W4 "$modFolder\source\test_ui.cpp" /link /OUT:"$buildFolder\test_ui.exe" user32.lib gdi32.lib
+if errorlevel 1 exit /b 1
+"$buildFolder\test_ui.exe"
+if errorlevel 1 exit /b 1
 rem Compatibility checked by installer target validation.
 exit /b %errorlevel%
 "@ | Set-Content -LiteralPath $buildScript -Encoding ascii

@@ -17,7 +17,7 @@ Teleport to a teammate using a small button beside your party portraits. Attache
 1. Download **Setup-x64.exe** from [Releases](https://github.com/Tor-del/GrimDawn-PartyTeleport/releases).
 2. Run Setup; it locates Steam libraries and verifies the supported game DLLs. Leave **Create a desktop shortcut** selected.
 3. Start **Grim Dawn x64** through Steam, then open **Grim Dawn — Party Teleport** on your desktop or in the Start menu.
-4. Join a party, adjust the button position with F9, and click the button bearing your teammate's name.
+4. Join a party, adjust the button position with F8, and click the button bearing your teammate's name.
 
 The shortcut attaches to the running game. If it is closed, the app asks you to start it. Use **windowed or borderless** mode; exclusive fullscreen may hide external overlays. Close Grim Dawn and Party Teleport before upgrading/uninstalling a loaded module. First-time installation is possible while the game is open.
 
@@ -27,16 +27,15 @@ Portable ZIP: extract into the Grim Dawn installation directory, preserving `mod
 
 | Key | Action |
 | --- | --- |
-| F9 | Toggle positioning; drag any button to move the column, scroll to change spacing |
-| F10 | Close the app and remove its buttons |
-| F11 | Show/hide buttons |
-| F12 | Switch English / Russian |
+| F8 | Open/close settings mode |
 
-English is the default for Setup and the app, regardless of Windows language. Russian can be selected explicitly. Setup passes the selected language to its main shortcut. Separate **Party Teleport (English)** and **Party Teleport (Русский)** Start menu shortcuts are included. F12 remembers your preference until a shortcut explicitly selects a language again.
+Press **F8** while the game is active to open the settings panel. Select **English** or **Русский**, drag the panel header (or a placeholder row) to move the whole button column, and use **− / +** or the mouse wheel to change row spacing. **Exit app** closes Party Teleport. Press F8 again or click **Done (F8)** to hide settings; only teammate teleport buttons remain. Teleport requests are disabled during setup. Holding F8 does not repeatedly toggle the mode. The former F9–F12 shortcuts have been removed.
+
+English is the default for Setup and the app, regardless of Windows language. Russian can be selected explicitly. Setup passes the selected language to its main shortcut. Separate **Party Teleport (English)** and **Party Teleport (Русский)** Start menu shortcuts are included. The language buttons remember your preference until a shortcut explicitly selects a language again.
 
 Settings: `%LOCALAPPDATA%\GrimDawnPartyTeleport\PartyTeleport.ini`. No administrator rights are needed to save them. Run the game and app at the same privilege level.
 
-Original dark bronze buttons, serif lettering and green rift icons are inspired by Grim Dawn; no game artwork, fonts or textures are bundled. Names identify the destination: engine player order may differ from portrait order. Default position X=230, Y=150, row spacing=72 pixels; adjust with F9 for your UI scale.
+Original dark bronze buttons, serif lettering and green rift icons are inspired by Grim Dawn; no game artwork, fonts or textures are bundled. Names identify the destination: engine player order may differ from portrait order. Default position X=230, Y=150, row spacing=72 pixels; adjust with F8 for your UI scale.
 
 ## Distances and teleport rules
 
@@ -46,7 +45,7 @@ Original dark bronze buttons, serif lettering and green rift icons are inspired 
 - Party membership, destination and request age are checked again in the game's update thread. Requests older than one second are discarded. Special-area restrictions are not bypassed.
 - Native teleport coordinates are integers, truncated toward zero. A return portal is not created separately.
 
-The module uses the game's native teleport activity and adds no custom multiplayer transport. Whether the host needs the mod, cross-area transitions and remote-client outcomes require live testing. CoopDPS, TwitchChat and Camera10xFPS compatibility is also unverified: some hook the same update function. F6–F8 remain available to them. F12 may also trigger an existing Steam/game binding.
+The module uses the game's native teleport activity and adds no custom multiplayer transport. Whether the host needs the mod, cross-area transitions and remote-client outcomes require live testing. CoopDPS, TwitchChat and Camera10xFPS compatibility is also unverified: some hook the same update function. F8 is the only shortcut used by Party Teleport; it may conflict with another mod using the same key.
 
 ## Supported game
 
@@ -72,7 +71,7 @@ Install Visual Studio C++ Build Tools (x64 compiler and Windows SDK) and [Inno S
 
 Binaries and tests: `build/`. Installer, ZIP and `SHA256SUMS.txt`: `installer/dist/`. `-StageOnly` leaves installed copies untouched; without it, Build also tries to copy binaries beside the source. `VERSION` controls package filenames. Build-Installer can locate a standard Inno Setup installation automatically.
 
-Tests exercise the actual bridge with mocked engine calls: party changes, native arguments, cooldown, invalid/expired requests, restrictions, positions, distances, cross-region suppression and translations. Installer tests cover English defaults, Russian selection and unsupported targets before installation. Optional local locked-file check: `Test-Installer.ps1 -GameRoot 'C:\path\to\Grim Dawn'`. CI requires no game files; none are distributed in this repository.
+Hidden-window UI tests also cover the F8 toggle, setup-only actions, language persistence, movement, spacing limits, no teleport during setup, Done and Exit. Tests exercise the actual bridge with mocked engine calls: party changes, native arguments, cooldown, invalid/expired requests, restrictions, positions, distances, cross-region suppression and translations. Installer tests cover English defaults, Russian selection and unsupported targets before installation. Optional local locked-file check: `Test-Installer.ps1 -GameRoot 'C:\path\to\Grim Dawn'`. CI requires no game files; none are distributed in this repository.
 
 | Application option | Purpose |
 | --- | --- |

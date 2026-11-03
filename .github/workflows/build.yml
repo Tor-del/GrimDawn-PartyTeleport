@@ -36,7 +36,7 @@ jobs:
           $proc = Start-Process -FilePath $installer -ArgumentList ('/CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR="'+$folder+'"') -WindowStyle Hidden -PassThru -Wait
           if ($proc.ExitCode -ne 0) { throw "Inno Setup installation failed: $($proc.ExitCode)" }
           "INNO_COMPILER=$folder\ISCC.exe" >> $env:GITHUB_ENV
-      - name: Compile and run bridge and language tests
+      - name: Compile and run bridge, UI and language tests
         run: ./Build.ps1 -StageOnly
       - name: Build bilingual installer
         run: ./Build-Installer.ps1 -SkipBuild -CompilerPath $env:INNO_COMPILER

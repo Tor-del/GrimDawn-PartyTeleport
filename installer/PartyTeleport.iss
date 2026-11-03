@@ -1,5 +1,5 @@
 #ifndef AppVersion
-#define AppVersion "0.2.0"
+#define AppVersion "0.3.0"
 #endif
 [Setup]
 AppId={{B688DCD7-E988-44F8-B685-C8C23FC18231}
@@ -52,8 +52,8 @@ russian.Help=Инструкция Party Teleport
 english.Help=Party Teleport instructions
 russian.InvalidGame=Выберите папку Grim Dawn, содержащую x64\Grim Dawn.exe, x64\Game.dll и x64\Engine.dll.
 english.InvalidGame=Select the Grim Dawn folder containing x64\Grim Dawn.exe, x64\Game.dll and x64\Engine.dll.
-russian.Unsupported=Эта сборка Grim Dawn пока не поддерживается Party Teleport 0.2. Установка отменена без изменения игры.
-english.Unsupported=This Grim Dawn build is not supported by Party Teleport 0.2. No game files were changed.
+russian.Unsupported=Эта сборка Grim Dawn пока не поддерживается Party Teleport 0.3. Установка отменена без изменения игры.
+english.Unsupported=This Grim Dawn build is not supported by Party Teleport 0.3. No game files were changed.
 russian.InUse=Закройте Grim Dawn и окно Party Teleport вручную, затем повторите установку или удаление. Установщик не закрывает игру автоматически.
 english.InUse=Close Grim Dawn and Party Teleport manually, then retry installation or removal. Setup will not close the game automatically.
 

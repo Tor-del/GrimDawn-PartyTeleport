@@ -1,6 +1,7 @@
 #include "protocol.h"
 #include "../vendor/minhook/include/MinHook.h"
 #include <cstring>
+#include "mouse_filter.h"
 namespace {
 pt::Shared* shared;
 using Object = void*(*)(void*);
@@ -10,6 +11,7 @@ using Update = void(*)(void*,int);
 struct Vector { unsigned char* begin; unsigned char* end; unsigned char* capacity; };
 struct WorldVec { alignas(8) unsigned char bytes[24]; };
 struct GameString { union { const wchar_t* data; wchar_t small[8]; }; size_t length,capacity; };
+struct NarrowString {union {const char* data;char small[16];};size_t length,capacity;};
 static_assert(sizeof(GameString)==32);
 using Location = WorldVec*(*)(void*,WorldVec*,unsigned);
 using Position = pt::Vec*(*)(const WorldVec*,pt::Vec*);
@@ -23,6 +25,10 @@ Position getPosition;
 Together together;
 Teleport teleport;
 Update original;
+using Singleton=void*(*)();
+using Localize=const wchar_t*(*)(void*,const char*);
+Singleton getLocalizer;
+Localize localize;
 void** engine;
 unsigned generation=1, lastIds[3]{}, lastSelfId=0;
 void* lastPlayer;
@@ -48,6 +54,29 @@ bool nameFor(void* manager,unsigned id,wchar_t* out) {
         memcpy(out,source,n*sizeof(wchar_t)); out[n]=0; return true;
     }
     return false;
+}
+bool areaTagFor(void* manager,unsigned id,char (&out)[128]) {
+    out[0]=0;auto cache=static_cast<Vector*>(getCache(manager));size_t count;
+    if(!cache||!vectorCount(cache,0x140,64,count)) return false;
+    for(size_t i=0;i<count;++i) {
+        auto row=cache->begin+i*0x140;
+        if(*reinterpret_cast<unsigned*>(row+8)!=id) continue;
+        // GetPlayerNetHeartbeatInfo writes Engine::GetAreaNameTag at +0x38;
+        // PlayerNetBasicInfo embeds that heartbeat at +8, so the tag is +0x40.
+        auto s=reinterpret_cast<const NarrowString*>(row+0x40);
+        if(!s->length||s->length>=sizeof(out)||s->capacity<s->length) return false;
+        const char* data=s->capacity>=16?s->data:s->small;if(!data) return false;
+        memcpy(out,data,s->length);out[s->length]=0;return true;
+    }
+    return false;
+}
+void areaNameFor(const char* tag,wchar_t (&out)[96]) {
+    out[0]=0;if(!tag||!tag[0]||!getLocalizer||!localize) return;
+    void* manager=getLocalizer();if(!manager) return;
+    const wchar_t* name=localize(manager,tag);
+    if(!name||!name[0]||!wcsncmp(name,L"tag",3)||!wcsncmp(name,L"Tag not found",13)) return;
+    size_t length=wcsnlen_s(name,512);if(length>=512) return;
+    wcsncpy_s(out,name,_TRUNCATE);
 }
 bool positionFor(void* manager,unsigned id,pt::Vec& pos) {
     WorldVec location{}; getLocation(manager,&location,id);
@@ -75,7 +104,8 @@ void tick(void* game) {
         void* party=active?getParty(game):nullptr;
         unsigned selfId=active?getId(game):0;
         bool allowed=active && isAlive(player) && !isTeleporting(player) && canTeleport(game) && now-lastTeleport>=3000;
-        unsigned ids[3]{};
+        unsigned ids[3]{};char selfArea[128]{};
+        if(manager) areaTagFor(manager,selfId,selfArea);
         if(manager && party) {
             auto players=static_cast<Vector*>(getPlayers(manager)); size_t count;
             if(players && vectorCount(players,sizeof(unsigned),64,count)) {
@@ -86,7 +116,9 @@ void tick(void* game) {
                     if(!nameFor(manager,id,row.name)) continue;
                     row.id=id; ids[view.count]=id; pt::Vec pos{};
                     row.enabled=allowed && positionFor(manager,id,pos);
-                    row.distance=distanceFor(manager,selfId,id);
+                    char area[128]{};areaTagFor(manager,id,area);areaNameFor(area,row.area);
+                    row.otherArea=selfArea[0]&&area[0]&&strcmp(selfArea,area)!=0;
+                    row.distance=row.otherArea?-1:distanceFor(manager,selfId,id);
                     ++view.count;
                 }
             }
@@ -128,8 +160,8 @@ DWORD WINAPI init(void*) {
     shared=map?static_cast<pt::Shared*>(MapViewOfFile(map,FILE_MAP_ALL_ACCESS,0,0,sizeof(pt::Shared))):nullptr;
     if(!shared) return 1;
     *shared={}; shared->signature=pt::magic;
-    auto g=GetModuleHandleW(L"Game.dll"), e=GetModuleHandleW(L"Engine.dll");
-    wchar_t path[32768]; if(!g||!e) { shared->status=2; return 2; }
+    auto g=GetModuleHandleW(L"Game.dll"), e=GetModuleHandleW(L"Engine.dll"),d=GetModuleHandleW(L"DirectInput.dll");
+    wchar_t path[32768]; if(!g||!e||!d) { shared->status=2; return 2; }
     GetModuleFileNameW(g,path,32768); std::wstring folder=path; folder.resize(folder.find_last_of(L"\\/"));
     if(!supported(folder)) { shared->status=2; return 2; }
     bool ok=true;
@@ -151,11 +183,16 @@ DWORD WINAPI init(void*) {
     B(e,getInfo,"?GetGameInfo@Engine@GAME@@QEAAPEAVGameInfo@2@XZ");
     B(e,isMultiplayer,"?GetIsMultiPlayer@GameInfo@GAME@@QEBA_NXZ");
     B(e,getRegion,"?GetRegion@Entity@GAME@@QEBAPEAVRegion@2@XZ");
+    B(e,getLocalizer,"?Instance@LocalizationManager@GAME@@SAAEAV12@XZ");
+    B(e,localize,"?LocalizeWithoutParams@LocalizationManager@GAME@@QEAAPEBGPEBD@Z");
 #undef B
     auto target=reinterpret_cast<void*>(GetProcAddress(g,"?Update@GameEngine@GAME@@QEAAXH@Z"));
-    if(!ok||!target||MH_Initialize()!=MH_OK||MH_CreateHook(target,update,reinterpret_cast<void**>(&original))!=MH_OK) {shared->status=3;return 3;}
+    auto mouse=reinterpret_cast<void*>(GetProcAddress(d,"?GetMouseEvent@DirectInputDevice@GAME@@UEBA?AUMouseEvent@InputDevice@2@H@Z"));
+    input::state=shared;
+    if(!ok||!target||!mouse||MH_Initialize()!=MH_OK||MH_CreateHook(target,update,reinterpret_cast<void**>(&original))!=MH_OK||
+       MH_CreateHook(mouse,input::readMouse,reinterpret_cast<void**>(&input::originalMouse))!=MH_OK) {shared->status=3;return 3;}
+    if(MH_EnableHook(MH_ALL_HOOKS)!=MH_OK) {shared->status=3;return 3;}
     shared->status=1;
-    if(MH_EnableHook(target)!=MH_OK) {shared->status=3;return 3;}
     return 0;
 }
 }

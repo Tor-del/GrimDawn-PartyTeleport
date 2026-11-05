@@ -11,8 +11,9 @@ HWND buttons[3]{},gameWindow,settingsWindow;
 DWORD gamePid;
 HANDLE process;
 std::wstring ini;
-int anchorX=230,anchorY=150,gap=72,width=250,height=36;
-bool edit=false,preview=false,drag=false,was8=false;
+int anchorX=230,anchorY=150,gap=72,width=320,height=52;
+bool edit=false,preview=false,drag=false;
+HWND rightClickWindow;
 ui::SettingAction settingsHover=ui::SettingAction::None,settingsPressed=ui::SettingAction::None;
 bool hovered[3]{};
 POINT dragStart,anchorStart;
@@ -36,7 +37,13 @@ bool foreground() {
 }
 bool snapshot(pt::Snapshot& value) {
     if(!shared||!pt::enter(shared)) return false;
-    value=shared->view; shared->heartbeat=GetTickCount64(); pt::leave(shared); return true;
+    value=shared->view; shared->heartbeat=GetTickCount64();shared->uiPid=GetCurrentProcessId();
+    for(int i=0;i<3;++i) shared->windows[i]=reinterpret_cast<ULONGLONG>(buttons[i]);
+    shared->windows[3]=reinterpret_cast<ULONGLONG>(settingsWindow);
+    pt::leave(shared); return true;
+}
+void markOverlayClick() {
+    if(shared&&pt::enter(shared)) {shared->heartbeat=GetTickCount64();shared->clickUntil=shared->heartbeat+150;pt::leave(shared);}
 }
 void layout() {
     if(!preview && WaitForSingleObject(process,0)==WAIT_OBJECT_0) {PostQuitMessage(0);return;}
@@ -52,7 +59,7 @@ void layout() {
         anchorX=x;anchorY=y;
     }
     for(int i=0;i<3;++i) {
-        bool show=visible && (edit || i<view.count);
+        bool show=visible && (edit || i<view.count || (i==0&&view.count==0));
         SetWindowPos(buttons[i],HWND_TOPMOST,origin.x+x,origin.y+y+i*gap,width,height,SWP_NOACTIVATE|(show?SWP_SHOWWINDOW:SWP_HIDEWINDOW));
         InvalidateRect(buttons[i],nullptr,FALSE);
     }
@@ -68,19 +75,22 @@ void layout() {
     InvalidateRect(settingsWindow,nullptr,FALSE);
 }
 void setEditing(bool value) {
-    ReleaseCapture();drag=false;settingsPressed=ui::SettingAction::None;
+    ReleaseCapture();drag=false;rightClickWindow=nullptr;settingsPressed=ui::SettingAction::None;
     for(auto& id:clickId) id=0;
     edit=value;save();layout();
 }
-void handleHotkey(bool down,bool focused) {
-    if(focused&&down&&!was8) setEditing(!edit);
-    was8=down;
+void rightClick(HWND window,UINT message,LPARAM point) {
+    markOverlayClick();
+    if(message==WM_RBUTTONDOWN) {SetCapture(window);rightClickWindow=window;return;}
+    auto started=rightClickWindow;rightClickWindow=nullptr;ReleaseCapture();
+    POINT p{static_cast<short>(LOWORD(point)),static_cast<short>(HIWORD(point))};RECT r;GetClientRect(window,&r);
+    if(started==window&&PtInRect(&r,p)) setEditing(!edit);
 }
 void moveDrag(POINT point) {
     if(!edit||!drag) return;
     anchorX=anchorStart.x+point.x-dragStart.x;anchorY=anchorStart.y+point.y-dragStart.y;layout();
 }
-void changeSpacing(int amount) {gap=std::clamp(gap+amount,32,250);save();layout();}
+void changeSpacing(int amount) {gap=std::clamp(gap+amount,56,250);save();layout();}
 void settingsAction(ui::SettingAction action) {
     if(!edit) return;
     switch(action) {
@@ -101,7 +111,10 @@ LRESULT CALLBACK settingsProc(HWND h,UINT msg,WPARAM w,LPARAM l) {
     switch(msg) {
     case WM_MOUSEACTIVATE:return MA_NOACTIVATE;
     case WM_ERASEBKGND:return 1;
+    case WM_RBUTTONDOWN:case WM_RBUTTONUP:rightClick(h,msg,l);return 0;
+    case WM_CONTEXTMENU:return 0;
     case WM_LBUTTONDOWN:
+        markOverlayClick();
         if(!edit) return 0;
         settingsPressed=ui::settingAt(p);SetCapture(h);
         if(settingsPressed==ui::SettingAction::Move) {drag=true;GetCursorPos(&dragStart);anchorStart={anchorX,anchorY};}
@@ -113,12 +126,13 @@ LRESULT CALLBACK settingsProc(HWND h,UINT msg,WPARAM w,LPARAM l) {
         InvalidateRect(h,nullptr,FALSE);return 0;
     case WM_MOUSELEAVE:settingsHover=ui::SettingAction::None;InvalidateRect(h,nullptr,FALSE);return 0;
     case WM_LBUTTONUP: {
+        markOverlayClick();
         auto pressed=settingsPressed;settingsPressed=ui::SettingAction::None;
         drag=false;ReleaseCapture();
         if(edit&&pressed!=ui::SettingAction::None&&pressed==ui::settingAt(p)) settingsAction(pressed);
         save();return 0;
     }
-    case WM_CAPTURECHANGED:drag=false;settingsPressed=ui::SettingAction::None;return 0;
+    case WM_CAPTURECHANGED:drag=false;rightClickWindow=nullptr;settingsPressed=ui::SettingAction::None;return 0;
     case WM_MOUSEWHEEL:if(edit) changeSpacing(static_cast<short>(HIWORD(w))>0?2:-2);return 0;
     case WM_PAINT: {PAINTSTRUCT ps;auto dc=BeginPaint(h,&ps);ui::paintSettings(dc,gap,settingsHover);EndPaint(h,&ps);return 0;}
     }
@@ -129,7 +143,10 @@ LRESULT CALLBACK proc(HWND h,UINT msg,WPARAM w,LPARAM l) {
     switch(msg) {
     case WM_MOUSEACTIVATE:return MA_NOACTIVATE;
     case WM_ERASEBKGND:return 1;
+    case WM_RBUTTONDOWN:case WM_RBUTTONUP:rightClick(h,msg,l);return 0;
+    case WM_CONTEXTMENU:return 0;
     case WM_LBUTTONDOWN:
+        markOverlayClick();
         if(edit) {drag=true;GetCursorPos(&dragStart);anchorStart={anchorX,anchorY};SetCapture(h);}
         else if(i<view.count && view.rows[i].enabled && pt::fresh(GetTickCount64(),view.time,1000)) {
             clickId[i]=view.rows[i].id;clickGeneration[i]=view.generation;SetCapture(h);
@@ -141,6 +158,7 @@ LRESULT CALLBACK proc(HWND h,UINT msg,WPARAM w,LPARAM l) {
         return 0;
     case WM_MOUSELEAVE:hovered[i]=false;InvalidateRect(h,nullptr,FALSE);return 0;
     case WM_LBUTTONUP: {
+        markOverlayClick();
         unsigned id=clickId[i],generation=clickGeneration[i];clickId[i]=0;
         ReleaseCapture();
         if(edit) {drag=false;save();return 0;}
@@ -153,13 +171,17 @@ LRESULT CALLBACK proc(HWND h,UINT msg,WPARAM w,LPARAM l) {
         }
         return 0;
     }
-    case WM_CAPTURECHANGED:drag=false;clickId[i]=0;return 0;
+    case WM_CAPTURECHANGED:drag=false;rightClickWindow=nullptr;clickId[i]=0;return 0;
     case WM_MOUSEWHEEL:
         if(edit) changeSpacing(static_cast<short>(HIWORD(w))>0?2:-2);return 0;
     case WM_PAINT: {
         PAINTSTRUCT ps;auto dc=BeginPaint(h,&ps);RECT r;GetClientRect(h,&r);
         bool enabled=!edit && i<view.count && view.rows[i].enabled && GetTickCount64()-pending>1000;
         pt::Row row{};if(i<view.count) row=view.rows[i];
+        else if(!edit&&i==0&&view.count==0) {
+            wcscpy_s(row.name,L"Party Teleport");
+            wcscpy_s(row.area,ui::tr(L"Right-click for settings",L"ПКМ — настройка"));
+        }
         ui::paintButton(dc,r,row,edit,enabled,hovered[i]);
         EndPaint(h,&ps);return 0;
     }
@@ -193,7 +215,7 @@ int wmain(int argc,wchar_t** argv) {
     ini=ui::settingsPath;
     anchorX=std::clamp(int(GetPrivateProfileIntW(L"Buttons",L"X",230,ini.c_str())),0,16000);
     anchorY=std::clamp(int(GetPrivateProfileIntW(L"Buttons",L"Y",150,ini.c_str())),0,16000);
-    gap=std::clamp(int(GetPrivateProfileIntW(L"Buttons",L"Gap",72,ini.c_str())),32,250);
+    gap=std::clamp(int(GetPrivateProfileIntW(L"Buttons",L"Gap",72,ini.c_str())),56,250);
     WNDCLASSW wc{};wc.lpfnWndProc=proc;wc.hInstance=GetModuleHandleW(nullptr);wc.lpszClassName=L"PartyTeleport.Button";wc.hCursor=LoadCursorW(nullptr,IDC_HAND);RegisterClassW(&wc);
     for(int i=0;i<3;++i) {
         buttons[i]=CreateWindowExW(WS_EX_TOPMOST|WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE,wc.lpszClassName,ui::title,WS_POPUP,0,0,width,height,nullptr,nullptr,wc.hInstance,nullptr);
@@ -206,8 +228,7 @@ int wmain(int argc,wchar_t** argv) {
     MSG msg;
     while(GetMessageW(&msg,nullptr,0,0)>0) {
         if(msg.message==WM_TIMER) {
-            bool focused=preview||foreground();
-            handleHotkey((GetAsyncKeyState(VK_F8)&0x8000)!=0,focused);layout();
+            layout();
         }
         TranslateMessage(&msg);DispatchMessageW(&msg);
     }

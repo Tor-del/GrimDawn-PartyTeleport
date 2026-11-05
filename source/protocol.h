@@ -2,8 +2,8 @@
 #include "compatibility.h"
 #include <cmath>
 namespace pt {
-constexpr LONG magic = 0x50543032;
-struct Row { unsigned id; wchar_t name[64]; LONG enabled; float distance=-1; };
+constexpr LONG magic = 0x50543033;
+struct Row { unsigned id; wchar_t name[64]; LONG enabled; float distance=-1; LONG otherArea; wchar_t area[96]; };
 struct Snapshot { ULONGLONG time; unsigned generation; LONG count; Row rows[3]; LONG result; };
 struct Shared {
     LONG signature;
@@ -11,8 +11,10 @@ struct Shared {
     Snapshot view;
     unsigned requestId, requestGeneration;
     ULONGLONG requestTime, heartbeat;
+    DWORD uiPid;
+    ULONGLONG windows[4],clickUntil;
 };
-inline std::wstring mappingName(DWORD pid) { return L"Local\\GrimDawn.PartyTeleport.v2." + std::to_wstring(pid); }
+inline std::wstring mappingName(DWORD pid) { return L"Local\\GrimDawn.PartyTeleport.v3." + std::to_wstring(pid); }
 inline bool enter(Shared* s) { return InterlockedCompareExchange(&s->lock,1,0)==0; }
 inline void leave(Shared* s) { InterlockedExchange(&s->lock,0); }
 struct Vec { float x,y,z; };

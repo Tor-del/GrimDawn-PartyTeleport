@@ -53,6 +53,7 @@ int inject(int argc, wchar_t** argv, DWORD& gamePid) {
         bool compatible = supported(gameDir);
         wprintf(L"Game.dll SHA256: "); printf("%s\n", sha256(gameDir + L"\\Game.dll").c_str());
         wprintf(L"Engine.dll SHA256: "); printf("%s\n", sha256(gameDir + L"\\Engine.dll").c_str());
+        wprintf(L"DirectInput.dll SHA256: "); printf("%s\n", sha256(gameDir + L"\\DirectInput.dll").c_str());
         wprintf(L"Compatibility: %s\n", compatible ? L"PASS" : L"FAIL (no changes made)");
         return compatible ? 0 : 2;
     }

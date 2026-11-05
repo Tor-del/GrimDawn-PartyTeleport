@@ -17,7 +17,7 @@ Teleport to a teammate using a small button beside your party portraits. Attache
 1. Download **Setup-x64.exe** from [Releases](https://github.com/Tor-del/GrimDawn-PartyTeleport/releases).
 2. Run Setup; it locates Steam libraries and verifies the supported game DLLs. Leave **Create a desktop shortcut** selected.
 3. Start **Grim Dawn x64** through Steam, then open **Grim Dawn — Party Teleport** on your desktop or in the Start menu.
-4. Join a party, adjust the button position with F8, and click the button bearing your teammate's name.
+4. Join a party, right-click the overlay to adjust its position, and click the button bearing your teammate's name.
 
 The shortcut attaches to the running game. If it is closed, the app asks you to start it. Use **windowed or borderless** mode; exclusive fullscreen may hide external overlays. Close Grim Dawn and Party Teleport before upgrading/uninstalling a loaded module. First-time installation is possible while the game is open.
 
@@ -25,27 +25,32 @@ Portable ZIP: extract into the Grim Dawn installation directory, preserving `mod
 
 ## Controls and languages
 
-| Key | Action |
+| Mouse action | Result |
 | --- | --- |
-| F8 | Open/close settings mode |
+| Left-click a teammate | Teleport to that teammate |
+| Right-click the overlay | Open/close settings |
 
-Press **F8** while the game is active to open the settings panel. Select **English** or **Русский**, drag the panel header (or a placeholder row) to move the whole button column, and use **− / +** or the mouse wheel to change row spacing. **Exit app** closes Party Teleport. Press F8 again or click **Done (F8)** to hide settings; only teammate teleport buttons remain. Teleport requests are disabled during setup. Holding F8 does not repeatedly toggle the mode. The former F9–F12 shortcuts have been removed.
+Right-click a teammate button to open settings. Select **English** or **Русский**, drag the panel header (or a placeholder row) to move the column, and use **− / +** or the mouse wheel to change row spacing. **Exit app** closes Party Teleport. Right-click the overlay again or click **Done** to return to teleport buttons. Teleport requests are disabled during setup. No F-key shortcuts are used. If there is no party, a small **Party Teleport** tile remains available for right-click settings.
 
 English is the default for Setup and the app, regardless of Windows language. Russian can be selected explicitly. Setup passes the selected language to its main shortcut. Separate **Party Teleport (English)** and **Party Teleport (Русский)** Start menu shortcuts are included. The language buttons remember your preference until a shortcut explicitly selects a language again.
 
 Settings: `%LOCALAPPDATA%\GrimDawnPartyTeleport\PartyTeleport.ini`. No administrator rights are needed to save them. Run the game and app at the same privilege level.
 
-Original dark bronze buttons, serif lettering and green rift icons are inspired by Grim Dawn; no game artwork, fonts or textures are bundled. Names identify the destination: engine player order may differ from portrait order. Default position X=230, Y=150, row spacing=72 pixels; adjust with F8 for your UI scale.
+Original dark bronze buttons, wider Verdana lettering and green rift icons are inspired by Grim Dawn; no game artwork, fonts or textures are bundled. Names identify the destination: engine player order may differ from portrait order. Default position X=230, Y=150, row spacing=72 pixels; right-click to adjust for your UI scale.
 
 ## Distances and teleport rules
 
 - `~134 m` is an **approximate straight-line 3D distance**, assuming one world-coordinate unit is one metre. This scale has not been calibrated in a live game; it is not walking distance.
-- Distance is shown only for positions in the **same loaded region**. Otherwise it is omitted. Teleport availability is checked separately.
+- If the teammate is in a **different named area**, the second line shows that area instead of distance. Names come from the multiplayer heartbeat and are localized using the game's current language. If the game has not supplied a name, **Location unavailable** is shown; no location is guessed. Distance is shown only for a shared named area with comparable loaded positions. Teleport availability is checked separately.
 - You must be alive, not already teleporting, and allowed by the game to use a personal teleport. There is a three-second cooldown between calls to the native teleport function.
 - Party membership, destination and request age are checked again in the game's update thread. Requests older than one second are discarded. Special-area restrictions are not bypassed.
 - Native teleport coordinates are integers, truncated toward zero. A return portal is not created separately.
 
-The module uses the game's native teleport activity and adds no custom multiplayer transport. Whether the host needs the mod, cross-area transitions and remote-client outcomes require live testing. CoopDPS, TwitchChat and Camera10xFPS compatibility is also unverified: some hook the same update function. F8 is the only shortcut used by Party Teleport; it may conflict with another mod using the same key.
+The module uses the game's native teleport activity and adds no custom multiplayer transport. Whether the host needs the mod, cross-area transitions and remote-client outcomes require live testing. CoopDPS, TwitchChat and Camera10xFPS compatibility is also unverified: some hook the same update function. Party Teleport uses no keyboard shortcuts.
+
+## Mouse input
+
+Mouse button and wheel data over the overlay are filtered inside the supported game's DirectInput event reader. Gestures consumed by the overlay remain blocked until release, including when dragged outside. Keyboard input and mouse gestures started outside the overlay are otherwise preserved. A short release guard covers buffered clicks when a settings window closes. Live-game input behavior still needs verification after updating.
 
 ## Supported game
 
@@ -54,6 +59,7 @@ Windows 10/11, x64 only. The installer and DLL require these exact SHA-256 hashe
 ```text
 Game.dll   cd7ecd7942d719f96b42aff4896f8c25d52152b4a41191f71a4a66ea48cecad2
 Engine.dll 4c2ea14ce1c591b315cc29a8a96819a5c3c7e194adbd6f7eea208b9bb8a93153
+DirectInput.dll 9cc12125db6f7e1a64c8d280d31961e4fa80addfe03aa7f43bff153acc92bcd6
 ```
 
 Game updates may need a mod update. Game executables, databases and saves are not patched on disk. The injected DLL remains in memory until Grim Dawn exits; the game performs normal saves after movement.
@@ -71,7 +77,7 @@ Install Visual Studio C++ Build Tools (x64 compiler and Windows SDK) and [Inno S
 
 Binaries and tests: `build/`. Installer, ZIP and `SHA256SUMS.txt`: `installer/dist/`. `-StageOnly` leaves installed copies untouched; without it, Build also tries to copy binaries beside the source. `VERSION` controls package filenames. Build-Installer can locate a standard Inno Setup installation automatically.
 
-Hidden-window UI tests also cover the F8 toggle, setup-only actions, language persistence, movement, spacing limits, no teleport during setup, Done and Exit. Tests exercise the actual bridge with mocked engine calls: party changes, native arguments, cooldown, invalid/expired requests, restrictions, positions, distances, cross-region suppression and translations. Installer tests cover English defaults, Russian selection and unsupported targets before installation. Optional local locked-file check: `Test-Installer.ps1 -GameRoot 'C:\path\to\Grim Dawn'`. CI requires no game files; none are distributed in this repository.
+Hidden-window UI tests also cover right-click setup toggling and cancelled clicks, setup-only actions, language persistence, movement, spacing limits, no teleport during setup, Done and Exit. Tests exercise the actual bridge with mocked engine calls: party changes, native arguments, cooldown, invalid/expired requests, restrictions, positions, distances, cross-region suppression, localized area labels, malformed area tags, DirectInput mouse/wheel filtering, drag/release handling, stale UI state and translations. Installer tests cover English defaults, Russian selection and unsupported targets before installation. Optional local locked-file check: `Test-Installer.ps1 -GameRoot 'C:\path\to\Grim Dawn'`. CI requires no game files; none are distributed in this repository.
 
 | Application option | Purpose |
 | --- | --- |

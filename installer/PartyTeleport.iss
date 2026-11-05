@@ -1,5 +1,5 @@
 #ifndef AppVersion
-#define AppVersion "0.3.0"
+#define AppVersion "0.4.0"
 #endif
 [Setup]
 AppId={{B688DCD7-E988-44F8-B685-C8C23FC18231}
@@ -50,10 +50,10 @@ russian.Attach=Подключить Party Teleport к запущенной иг�
 english.Attach=Attach Party Teleport to the running game
 russian.Help=Инструкция Party Teleport
 english.Help=Party Teleport instructions
-russian.InvalidGame=Выберите папку Grim Dawn, содержащую x64\Grim Dawn.exe, x64\Game.dll и x64\Engine.dll.
-english.InvalidGame=Select the Grim Dawn folder containing x64\Grim Dawn.exe, x64\Game.dll and x64\Engine.dll.
-russian.Unsupported=Эта сборка Grim Dawn пока не поддерживается Party Teleport 0.3. Установка отменена без изменения игры.
-english.Unsupported=This Grim Dawn build is not supported by Party Teleport 0.3. No game files were changed.
+russian.InvalidGame=Выберите папку Grim Dawn, содержащую x64\Grim Dawn.exe, x64\Game.dll, x64\Engine.dll и x64\DirectInput.dll.
+english.InvalidGame=Select the Grim Dawn folder containing x64\Grim Dawn.exe, x64\Game.dll, x64\Engine.dll and x64\DirectInput.dll.
+russian.Unsupported=Эта сборка Grim Dawn пока не поддерживается Party Teleport 0.4. Установка отменена без изменения игры.
+english.Unsupported=This Grim Dawn build is not supported by Party Teleport 0.4. No game files were changed.
 russian.InUse=Закройте Grim Dawn и окно Party Teleport вручную, затем повторите установку или удаление. Установщик не закрывает игру автоматически.
 english.InUse=Close Grim Dawn and Party Teleport manually, then retry installation or removal. Setup will not close the game automatically.
 
@@ -104,7 +104,8 @@ function CloseHandle(Handle: Integer): Boolean;
 function GameFolder(const Path: string): Boolean;
 begin
   Result := FileExists(AddBackslash(Path) + 'x64\Grim Dawn.exe') and
-    FileExists(AddBackslash(Path) + 'x64\Game.dll') and FileExists(AddBackslash(Path) + 'x64\Engine.dll');
+    FileExists(AddBackslash(Path) + 'x64\Game.dll') and FileExists(AddBackslash(Path) + 'x64\Engine.dll') and
+    FileExists(AddBackslash(Path) + 'x64\DirectInput.dll');
 end;
 
 function LibraryPath(const Line: string): string;
@@ -156,7 +157,8 @@ begin
   if not GameFolder(Path) then begin Result := CustomMessage('InvalidGame'); Exit; end;
   try
     if (GetSHA256OfFile(AddBackslash(Path) + 'x64\Game.dll') <> 'cd7ecd7942d719f96b42aff4896f8c25d52152b4a41191f71a4a66ea48cecad2') or
-       (GetSHA256OfFile(AddBackslash(Path) + 'x64\Engine.dll') <> '4c2ea14ce1c591b315cc29a8a96819a5c3c7e194adbd6f7eea208b9bb8a93153') then Result := CustomMessage('Unsupported');
+       (GetSHA256OfFile(AddBackslash(Path) + 'x64\Engine.dll') <> '4c2ea14ce1c591b315cc29a8a96819a5c3c7e194adbd6f7eea208b9bb8a93153') or
+       (GetSHA256OfFile(AddBackslash(Path) + 'x64\DirectInput.dll') <> '9cc12125db6f7e1a64c8d280d31961e4fa80addfe03aa7f43bff153acc92bcd6') then Result := CustomMessage('Unsupported');
   except Result := CustomMessage('InvalidGame'); end;
 end;
 

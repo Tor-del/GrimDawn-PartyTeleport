@@ -38,5 +38,6 @@ inline std::string sha256(const std::wstring& path) {
 }
 inline bool supported(const std::wstring& gameDir) {
     return sha256(gameDir + L"\\Game.dll") == "cd7ecd7942d719f96b42aff4896f8c25d52152b4a41191f71a4a66ea48cecad2" &&
-           sha256(gameDir + L"\\Engine.dll") == "4c2ea14ce1c591b315cc29a8a96819a5c3c7e194adbd6f7eea208b9bb8a93153";
+           sha256(gameDir + L"\\Engine.dll") == "4c2ea14ce1c591b315cc29a8a96819a5c3c7e194adbd6f7eea208b9bb8a93153" &&
+           sha256(gameDir + L"\\DirectInput.dll") == "9cc12125db6f7e1a64c8d280d31961e4fa80addfe03aa7f43bff153acc92bcd6";
 }

@@ -27,7 +27,7 @@ inline void paintSettings(HDC dc,int gap,SettingAction hover=SettingAction::None
     RECT all{0,0,settingsWidth,settingsHeight};auto bg=CreateSolidBrush(RGB(27,25,20));FillRect(dc,&all,bg);DeleteObject(bg);
     auto bronze=CreateSolidBrush(RGB(145,112,60));FrameRect(dc,&all,bronze);DeleteObject(bronze);
     SetBkMode(dc,TRANSPARENT);
-    auto font=CreateFontW(-14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Segoe UI");
+    auto font=CreateFontW(-14,0,0,0,FW_NORMAL,FALSE,FALSE,FALSE,DEFAULT_CHARSET,OUT_DEFAULT_PRECIS,CLIP_DEFAULT_PRECIS,CLEARTYPE_QUALITY,DEFAULT_PITCH,L"Verdana");
     auto oldFont=SelectObject(dc,font);SetTextColor(dc,RGB(232,214,175));
     RECT titleRect{14,7,302,31};DrawTextW(dc,tr(L"Party Teleport · Settings",L"Party Teleport · Настройка"),-1,&titleRect,DT_SINGLELINE|DT_VCENTER);
     SetTextColor(dc,RGB(165,155,131));RECT hint{14,31,302,54};
@@ -45,8 +45,8 @@ inline void paintSettings(HDC dc,int gap,SettingAction hover=SettingAction::None
         case SettingAction::Russian:text=L"Русский";break;
         case SettingAction::Less:text=L"−";break;
         case SettingAction::More:text=L"+";break;
-        case SettingAction::Done:text=tr(L"Done (F8)",L"Готово (F8)");break;
-        case SettingAction::Close:text=tr(L"Exit app",L"Закрыть приложение");break;
+        case SettingAction::Done:text=tr(L"Done",L"Готово");break;
+        case SettingAction::Close:text=tr(L"Exit app",L"Выход");break;
         default:break;
         }
         SetTextColor(dc,action==SettingAction::Close?RGB(218,154,130):RGB(232,214,175));

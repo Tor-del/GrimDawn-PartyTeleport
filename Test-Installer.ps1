@@ -21,14 +21,14 @@ Run-RejectedInstall (Join-Path $testRoot 'not-a-game-en') 'english-default' 'Sel
 Run-RejectedInstall (Join-Path $testRoot 'not-a-game-ru') 'russian-language' 'Выберите папку Grim Dawn' 'russian'
 $unsupported = Join-Path $testRoot 'unsupported-game'
 New-Item -ItemType Directory -Path (Join-Path $unsupported 'x64') | Out-Null
-foreach ($name in @('Grim Dawn.exe','Game.dll','Engine.dll')) {
+foreach ($name in @('Grim Dawn.exe','Game.dll','Engine.dll','DirectInput.dll')) {
     Set-Content -LiteralPath (Join-Path $unsupported ('x64\'+$name)) -Value 'Not a game binary.' -Encoding ascii
 }
 Run-RejectedInstall $unsupported 'unsupported-version' 'This Grim Dawn build is not supported'
 if ($GameRoot) {
     $fixture = Join-Path $testRoot 'locked-module-fixture'
     New-Item -ItemType Directory -Path (Join-Path $fixture 'x64') | Out-Null
-    foreach ($name in @('Grim Dawn.exe','Game.dll','Engine.dll')) {
+    foreach ($name in @('Grim Dawn.exe','Game.dll','Engine.dll','DirectInput.dll')) {
         Copy-Item -LiteralPath (Join-Path $GameRoot ('x64\'+$name)) -Destination (Join-Path $fixture 'x64')
     }
     New-Item -ItemType Directory -Force (Join-Path $fixture 'mods\PartyTeleport') | Out-Null
